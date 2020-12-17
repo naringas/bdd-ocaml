@@ -1,0 +1,3 @@
+(library
+ (name bdd)
+ (libraries base ocamlgraph))
