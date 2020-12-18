@@ -1,26 +1,15 @@
-type uniOp = Not
+open Formula
 
-type binOp = And | Or
-	(* | Implies | BiImplies | Xor | Nor | Nand *)
+type bdd =
+	| Leaf of bool
+	| Node of formula * bdd * bdd
 
-type formula =
-	| Atom of string
-	| UniNode of uniOp * formula
-	| BinNode of formula * binOp * formula
+let left (b : bdd) : bdd =
+	match b with
+	| Node (_label, left, _right) -> left
+	| Leaf l -> Leaf l
 
-module Atoms = Set.Make(String)
-
-let getVars (f : formula) : Atoms.t =
-	let rec getAllVars f =
-		match f with
-		| Atom f -> f :: []
-		| UniNode (_op, f) -> getAllVars f
-		| BinNode (f1, _op, f2) -> (getAllVars f1) @ (getAllVars f2)
-	in
-	Atoms.of_list (getAllVars f)
-
-;;
-let f = BinNode(
-	BinNode(Atom "x1", Or, Atom "x2"),
-	And,
-	BinNode(UniNode(Not, Atom "x1"), Or, UniNode(Not, Atom "x2")))
+let right (b : bdd) : bdd =
+	match b with
+	| Node (_label, _left, right) -> right
+	| Leaf l -> Leaf l
