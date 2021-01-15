@@ -1,8 +1,9 @@
 module Atoms = Set.Make(String)
 
 type uniOp = Not
-type binOp = And | Or
-	(* | Implies | BiImplies | Xor | Nor | Nand *)
+type binOp = And | Or | Implies
+	(* | BiImplies | Xor | Nor | Nand *)
+
 type formula =
 	| Atom of string
 	| UniOp of uniOp * formula
@@ -25,6 +26,9 @@ let rec to_string (f : formula) : string =
 		| Or  ->
 			String.concat ""
 			("(" :: to_string f1 ::" + ":: to_string f2 :: ")" :: [])
+		| Implies ->
+			String.concat ""
+			("(" :: to_string f1 ::" -> ":: to_string f2 :: ")" :: [])
 	in
 	match f with
 	| Atom f -> f

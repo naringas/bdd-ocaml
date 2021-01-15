@@ -1,0 +1,7 @@
+(library
+ (name bdd)
+ (libraries formula)
+ (modules bdd))
+(library
+ (name formula)
+ (modules formula))
