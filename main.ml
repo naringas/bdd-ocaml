@@ -3,9 +3,14 @@ open Formula
 
 (* f = ((x1 + x2) · (¬x1 + ¬x2)) *)
 let f = BinOp(
-	BinOp(Atom "x1", Or, Atom "x2"),
+	BinOp(Atom (Var "x1"), Or, Atom (Var "x2")),
 	And,
-	BinOp(UniOp(Not, Atom "x1"), Or, UniOp(Not, Atom "x2")))
+	BinOp(UniOp(Not, Atom (Var "x1")), Or, UniOp(Not, Atom (Var "x2"))))
+
+let f2 = BinOp(
+	BinOp(Atom(Var "x1"), BiImplies, Atom(Var "y1")),
+	And,
+	BinOp(Atom(Var "x2"), BiImplies, Atom(Var "y2")))
 
 (* let b1 = BNode(Var "x1", Leaf true, Leaf false) *)
 (* let b2 = BNode(Var "x2", b1, b1);; *)
