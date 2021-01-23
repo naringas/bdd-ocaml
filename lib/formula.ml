@@ -13,6 +13,7 @@ module Atom = struct
 		| (Var _a, B _b) -> 1
 		| (B _a, Var _b) -> -1
 		| (B a, B b) -> Bool.compare a b
+	let equals a b = Int.equal 0 (compare a b)
 end
 module ASet = Set.Make(Atom)
 
@@ -69,20 +70,51 @@ let rec substitute (f: formula) (value: bool) (x: atom) : formula =
 			if String.equal name (atom_to_string x)
 			then Atom (B value)
 			else Atom a))
-	| UniOp (op, f) ->
-		(* todo if op is get, flip the bool if subbing this atom *)
-		UniOp(op, (substitute f value x))
+	| UniOp (Not, f) -> (
+		match f with
+		| Atom _negA ->
+			(* apply the negation *)
+			(substitute f (not value) x)
+		| f -> UniOp(Not, (substitute f value x)))
 	| BinOp (f1, op, f2) ->
 		BinOp((substitute f1 value x), op, (substitute f2 value x))
 
-let to_INF (f: formula) (i: int) (nodes: atom array): (atom * formula * formula) =
-	let n = nodes.(i) in
-	n, (substitute f true n), (substitute f false n)
+let to_inf (f:formula) (vars:atom array) =
+	Array.map (fun var ->
+		Atom var, (substitute f true var), (substitute f false var)) vars
+
+let inf_to_string (a,b,c) =
+	(to_string a)^"->"^(to_string b)^", "^(to_string c)
+
+let show_inf_of_f f = to_inf f (getVars f)
+(*
+function
+		| Atom f -> (f, Atom(B true), Atom(B false))
+		| UniOp (Not, f) -> (
+			match f with
+			| Atom f -> (f, Atom(B false), Atom(B true))
+			| UniOp (op, f) -> (subAll UniOp(f))
+			| BinOp (f1, op, f2) -> (subAll BinOp(f1, op, f2)))
+		| BinOp (f1, _op, f2) -> (getAllVars f1) @ (getAllVars f2) *)
+(*
+		if i < Array.length n then
+		let n = nodes.(i) in
+		n, (substitute f true n), (substitute f false n)
+	done;
+	(*
+	match f with
+	| Atom a ->
+	| UniOp (op, f) ->
+	| BinOp (f1, op, f2) ->
+	*) *)
 
 (*
-let to_INF (f: formula) (x: x) (formula * formula) =
-	match x with
-	| B x ->
-	| Var x ->
+let to_INF (f: formula) (u: atom) (formula * formula) =
+
+	| Atom a
+	| UniOp op, f
+	| BinOp f1, op, f2
+	| B _ -> assert false (* makes no sense to main a if-then-else out of a bool *)
+	| Var  ->
 *)
 ;;

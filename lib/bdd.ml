@@ -1,4 +1,4 @@
-(* open Formula *)
+open Formula
 
 type bdd =
 	| Leaf of bool
