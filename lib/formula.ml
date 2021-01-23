@@ -30,7 +30,7 @@ let atom_to_string = let open Atom in function
 	| B a -> if a then "⊤" else "⊥"
 
 
-let getVars (f : formula): Atom.t array =
+let getVars (f:formula):Atom.t array =
 	let rec getAllVars = function
 		| Atom f -> f :: []
 		| UniOp (_op, f) -> getAllVars f
@@ -39,7 +39,7 @@ let getVars (f : formula): Atom.t array =
 	(* :( there must be a better way, using ASet is too expensive *)
 	getAllVars f |> ASet.of_list |> ASet.to_seq |> Array.of_seq
 
-let rec to_string (f : formula) : string =
+let rec to_string (f:formula):string =
 	let binNode_to_string f1 op f2 =
 		match op with
 		| And ->
@@ -61,7 +61,7 @@ let rec to_string (f : formula) : string =
 	| BinOp (f1, op, f2) -> binNode_to_string f1 op f2
 
 (* do a f[value/variable] substitution *)
-let rec substitute (f: formula) (value: bool) (x: atom) : formula =
+let rec substitute (f:formula) (value:bool) (x:atom):formula =
 	match f with
 	| Atom a -> (
 		match a with
@@ -87,34 +87,3 @@ let inf_to_string (a,b,c) =
 	(to_string a)^"->"^(to_string b)^", "^(to_string c)
 
 let show_inf_of_f f = to_inf f (getVars f)
-(*
-function
-		| Atom f -> (f, Atom(B true), Atom(B false))
-		| UniOp (Not, f) -> (
-			match f with
-			| Atom f -> (f, Atom(B false), Atom(B true))
-			| UniOp (op, f) -> (subAll UniOp(f))
-			| BinOp (f1, op, f2) -> (subAll BinOp(f1, op, f2)))
-		| BinOp (f1, _op, f2) -> (getAllVars f1) @ (getAllVars f2) *)
-(*
-		if i < Array.length n then
-		let n = nodes.(i) in
-		n, (substitute f true n), (substitute f false n)
-	done;
-	(*
-	match f with
-	| Atom a ->
-	| UniOp (op, f) ->
-	| BinOp (f1, op, f2) ->
-	*) *)
-
-(*
-let to_INF (f: formula) (u: atom) (formula * formula) =
-
-	| Atom a
-	| UniOp op, f
-	| BinOp f1, op, f2
-	| B _ -> assert false (* makes no sense to main a if-then-else out of a bool *)
-	| Var  ->
-*)
-;;
