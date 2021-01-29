@@ -1,12 +1,8 @@
-type uniOp = Not
-type binOp = And | Or | Implies | BiImplies
-	(* | Xor | Nor | Nand *)
-
 module Atom = struct
-	type t =
+	type atom =
 		| Var of string
 		| B of bool
-
+	type t = atom
 	let compare a b =
 		match a, b with
 		| (Var a, Var b) -> String.compare a b
@@ -17,9 +13,11 @@ module Atom = struct
 end
 module ASet = Set.Make(Atom)
 
-(* open Atom *)
 type atom = Atom.t  (* shortcut *)
 
+type uniOp = Not
+type binOp = And | Or | Implies | BiImplies
+	(* | Xor | Nor | Nand *)
 type formula =
 	| Atom of atom
 	| UniOp of uniOp * formula
@@ -61,29 +59,81 @@ let rec to_string (f:formula):string =
 	| BinOp (f1, op, f2) -> binNode_to_string f1 op f2
 
 (* do a f[value/variable] substitution *)
-let rec substitute (f:formula) (value:bool) (x:atom):formula =
-	match f with
-	| Atom a -> (
-		match a with
-		| B _ -> f
-		| Var name -> (
-			if String.equal name (atom_to_string x)
-			then Atom (B value)
-			else Atom a))
-	| UniOp (Not, f) -> (
+let rec substitute (f:formula) (value:atom) (x:atom):formula =
+	match value with
+	| B value -> (
 		match f with
-		| Atom _negA ->
-			(* apply the negation *)
-			(substitute f (not value) x)
-		| f -> UniOp(Not, (substitute f value x)))
-	| BinOp (f1, op, f2) ->
-		BinOp((substitute f1 value x), op, (substitute f2 value x))
+		| Atom a -> (
+			match a with
+			| B b -> Atom (B b)
+			| Var name -> (
+				if String.equal name (atom_to_string x)
+				then Atom (B value)
+				else Atom (Var name)))
+		| UniOp (Not, f) -> (substitute f (B (not value)) x)
+		| BinOp (f1, op, f2) ->
+			BinOp((substitute f1 (B value) x), op, (substitute f2 (B value) x)))
+	| Var value -> (
+		match f with
+		| Atom a -> (
+			match a with
+			| B b -> Atom (B b)
+			| Var name -> (
+				if String.equal name (atom_to_string x)
+				then Atom (Var value)
+				else Atom (Var name)))
+		| UniOp (Not, f) -> (substitute f (Var value) x)
+		| BinOp (f1, op, f2) ->
+			BinOp((substitute f1 (Var value) x), op, (substitute f2 (Var value) x)))
+type inf = {
+	low: formula;
+	high: formula
+}
+let to_inf (f:formula) (var:atom):inf = {
+	low=(substitute f (B false) var);
+	high=(substitute f (B true) var)}
 
-let to_inf (f:formula) (vars:atom array) =
-	Array.map (fun var ->
-		Atom var, (substitute f true var), (substitute f false var)) vars
+let show_inf_of_f f =
+	let to_inf_all (f:formula) (vars:atom array) =
+		Array.map (fun var ->
+			Atom var, (substitute f (B true) var), (substitute f (B false) var)) vars
+	and inf_to_string (a,b,c) =
+		(to_string a)^"->"^(to_string b)^", "^(to_string c)
+	in to_inf_all f (getVars f) |> (Array.map inf_to_string)
 
-let inf_to_string (a,b,c) =
-	(to_string a)^"->"^(to_string b)^", "^(to_string c)
+let print_f_inf f = show_inf_of_f f |> Array.iter print_endline
 
-let show_inf_of_f f = to_inf f (getVars f)
+let rec inf_desc (f:formula) (var:atom) : inf =
+	match var with
+	| B _ -> assert false
+	| Var v -> begin
+		match f with
+		| Atom t -> if String.equal (atom_to_string t) v
+			then to_inf f var else {low=f; high=f}
+		| UniOp (Not, t) -> (
+			let t_inf = inf_desc t var in (* voltea las variables para aplicar el not *)
+			{low=t_inf.high; high=t_inf.low})
+		| BinOp (p, op, q) -> {
+			low=BinOp((substitute p (B false) var), op, (substitute q (B false) var));
+			high=BinOp((substitute p (B true) var), op, (substitute q (B true) var))}
+	end
+
+let rec eval_formula form : bool =
+	match form with
+	| Atom f -> begin
+		match f with
+		| Var _ -> assert false
+		| B b -> b
+	end
+	| UniOp (Not, f) -> not (eval_formula f)
+	| BinOp (p, op, q) -> begin
+		match op with
+		| Or  -> ((eval_formula p) || (eval_formula q))
+		| And -> ((eval_formula p) && (eval_formula q))
+		| Implies -> (not (eval_formula p) || (eval_formula q))
+		| BiImplies -> begin
+			let evP = eval_formula p
+			and evQ = eval_formula q in
+			(evP && evQ) || (not evP && not evQ)
+		end
+	end

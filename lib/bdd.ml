@@ -2,7 +2,7 @@ open Formula
 
 type bdd =
 	| Leaf of bool
-	| Node of string * bdd * bdd
+	| Node of atom * bdd * bdd (* := Var, Low, High *)
 
 let left (b : bdd) : bdd =
 	match b with
@@ -14,36 +14,63 @@ let right (b : bdd) : bdd =
 	| Node (_label, _left, right) -> right
 	| Leaf l -> Leaf l
 
-
-type bddEntry = {
+type bEntry = {
 	index : int;
-	low  : int option;
-	high : int option;
+	low  : int;
+	high : int;
 }
+let n0 = {index=0; low=0; high=0}
+let n1 = {index=1; low=1; high=1}
 
-let tT = Hashtbl.create ~random:false 10
-let n0 = {index=0; low=None; high=None};;
-let n1 = {index=1; low=None; high=None};;
-Hashtbl.add tT "0" n0;
-Hashtbl.add tT "1" n1
-let tH = Hashtbl.create ~random:false 10
+let bEntry_to_string {index; low; high} =
+	"index=" ^ string_of_int index ^ " " ^
+	"low=" ^ string_of_int low ^ " " ^
+	"high=" ^ string_of_int high
 
-let mk ({index; low; high}: bddEntry) =
-	match (low, high) with
-	| (None, None)
-	| (Some _, None)
-	| (None, Some _) -> assert false
-	| (Some low, Some high) -> (
-		let entry = {index; low=Some low; high=Some high} in
-		if low == high
-		then (string_of_int low)
-		else if Hashtbl.mem tH entry
-		then (Hashtbl.find tH entry)
-		else (
-			Hashtbl.add tH entry (string_of_int index);
-			Hashtbl.add tT (string_of_int index) entry;
-			string_of_int index))
-(*
-let build t =
-	let rec buildIn t i =
- *)
+let mk (tNodes) (tEntries) (index:int) ~(low:int) ~(high:int):int =
+	if Int.equal low high
+	then low
+	else let entry = {index; low; high} in
+	(* entry |> bEntry_to_string |> print_endline; *)
+	if Hashtbl.mem tEntries entry then
+		Hashtbl.find tEntries entry
+	else begin
+		let newIndex = Hashtbl.length tEntries in
+		Hashtbl.add tEntries entry newIndex;
+		Hashtbl.add tNodes newIndex entry;
+		("inserted " ^ string_of_int newIndex) |> print_endline;
+		newIndex
+	end
+
+let rec build tNodes tEntries vars (t: formula) (i:int) : int =
+	if i > (Array.length vars)-1 then
+		if (eval_formula t) then 1 else 0
+	else
+		let v = vars.(i) in
+		let f_inf = inf_desc t v in
+		mk tNodes tEntries i
+			~low:(build tNodes tEntries vars f_inf.low (i+1))
+			~high:(build tNodes tEntries vars f_inf.high (i+1))
+
+let bdd_of_formula (f: formula) =
+	let vars = getVars f in
+	let tNodes = Hashtbl.create ((Array.length vars)+2)
+	and tEntries = Hashtbl.create (Array.length vars) in
+	Hashtbl.add tNodes 0 n0; Hashtbl.add tNodes 1 n1;
+	Hashtbl.add tEntries n0 0; Hashtbl.add tEntries n1 1;
+	let _ = (build tNodes tEntries vars f 0) in
+	tNodes, tEntries
+
+let bdd_and_show f =
+	let tNodes, tEntries = bdd_of_formula f in
+	Hashtbl.iter (fun key v -> begin
+		print_int key;
+		print_string " : ";
+		v |> bEntry_to_string |> print_endline
+	end) tNodes;
+	Hashtbl.iter (fun key v -> begin
+		key |> bEntry_to_string |> print_string;
+		print_string " : ";
+		print_int v;
+		print_newline();
+	end) tEntries;
