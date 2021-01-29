@@ -10,23 +10,28 @@ module Atom = struct
 		| (B _a, Var _b) -> -1
 		| (B a, B b) -> Bool.compare a b
 	let equals a b = Int.equal 0 (compare a b)
+	let to_string = function
+		| Var a -> a
+		| B a -> if a then "⊤" else "⊥"
 end
 module ASet = Set.Make(Atom)
 
-type atom = Atom.t  (* shortcut *)
+(* shortcuts *)
+type atom = Atom.t
+let atom_to_string = Atom.to_string
 
 type uniOp = Not
-type binOp = And | Or | Implies | BiImplies
-	(* | Xor | Nor | Nand *)
+type binOp = And | Or | Implies | BiImplies (* | Xor | Nor | Nand *)
 type formula =
 	| Atom of atom
 	| UniOp of uniOp * formula
 	| BinOp of formula * binOp * formula
 
-let atom_to_string = let open Atom in function
-	| Var a -> a
-	| B a -> if a then "⊤" else "⊥"
-
+(* If-then-else normal form *)
+type inf = {
+	low: formula;
+	high: formula
+}
 
 let getVars (f:formula):Atom.t array =
 	let rec getAllVars = function
@@ -38,25 +43,16 @@ let getVars (f:formula):Atom.t array =
 	getAllVars f |> ASet.of_list |> ASet.to_seq |> Array.of_seq
 
 let rec to_string (f:formula):string =
-	let binNode_to_string f1 op f2 =
-		match op with
-		| And ->
-			String.concat ""
-			("(" :: to_string f1 ::" ∧ ":: to_string f2 :: ")" :: [])
-		| Or  ->
-			String.concat ""
-			("(" :: to_string f1 ::" ∨ ":: to_string f2 :: ")" :: [])
-		| Implies ->
-			String.concat ""
-			("(" :: to_string f1 ::" ⇒ ":: to_string f2 :: ")" :: [])
-		| BiImplies ->
-			String.concat ""
-			("(" :: to_string f1 ::" ⇔ ":: to_string f2 :: ")" :: [])
-	in
-	match f with
+	let string_from_op = begin function
+		| And -> " ∧ "
+		| Or  -> " ∨ "
+		| Implies -> " ⇒ "
+		| BiImplies -> " ⇔ "
+	end
+	in match f with
 	| Atom f -> atom_to_string f
-	| UniOp (_op, f) -> "¬" ^ to_string f
-	| BinOp (f1, op, f2) -> binNode_to_string f1 op f2
+	| UniOp (Not, f) -> "¬" ^ to_string f
+	| BinOp (f1, op, f2) -> (to_string f1) ^ (string_from_op op) ^ (to_string f2)
 
 (* do a f[value/variable] substitution *)
 let rec substitute (f:formula) (value:atom) (x:atom):formula =
@@ -85,23 +81,10 @@ let rec substitute (f:formula) (value:atom) (x:atom):formula =
 		| UniOp (Not, f) -> (substitute f (Var value) x)
 		| BinOp (f1, op, f2) ->
 			BinOp((substitute f1 (Var value) x), op, (substitute f2 (Var value) x)))
-type inf = {
-	low: formula;
-	high: formula
-}
+
 let to_inf (f:formula) (var:atom):inf = {
 	low=(substitute f (B false) var);
 	high=(substitute f (B true) var)}
-
-let show_inf_of_f f =
-	let to_inf_all (f:formula) (vars:atom array) =
-		Array.map (fun var ->
-			Atom var, (substitute f (B true) var), (substitute f (B false) var)) vars
-	and inf_to_string (a,b,c) =
-		(to_string a)^"->"^(to_string b)^", "^(to_string c)
-	in to_inf_all f (getVars f) |> (Array.map inf_to_string)
-
-let print_f_inf f = show_inf_of_f f |> Array.iter print_endline
 
 let rec inf_desc (f:formula) (var:atom) : inf =
 	match var with
@@ -110,14 +93,22 @@ let rec inf_desc (f:formula) (var:atom) : inf =
 		match f with
 		| Atom t -> if String.equal (atom_to_string t) v
 			then to_inf f var else {low=f; high=f}
-		| UniOp (Not, t) -> (
-			let t_inf = inf_desc t var in (* voltea las variables para aplicar el not *)
-			{low=t_inf.high; high=t_inf.low})
+		| UniOp (Not, t) -> begin
+			(* voltea las variables para aplicar el not *)
+			let t_inf = inf_desc t var in {low=t_inf.high; high=t_inf.low}
+		end
 		| BinOp (p, op, q) -> {
-			low=BinOp((substitute p (B false) var), op, (substitute q (B false) var));
-			high=BinOp((substitute p (B true) var), op, (substitute q (B true) var))}
+			low=BinOp(
+				(substitute p (B false) var),
+				op,
+				(substitute q (B false) var));
+			high=BinOp(
+				(substitute p (B true) var),
+				op,
+				(substitute q (B true) var))}
 	end
 
+(* evaluates a formula in which all atoms are boolean (NO VARIABLES) *)
 let rec eval_formula form : bool =
 	match form with
 	| Atom f -> begin
@@ -137,3 +128,14 @@ let rec eval_formula form : bool =
 			(evP && evQ) || (not evP && not evQ)
 		end
 	end
+
+(* funciones de prueba/debug *)
+let show_inf_of_f f =
+	let to_inf_all (f:formula) (vars:atom array) =
+		Array.map (fun var ->
+			Atom var, (substitute f (B true) var), (substitute f (B false) var)) vars
+	and inf_to_string (a,b,c) =
+		(to_string a)^"->"^(to_string b)^", "^(to_string c)
+	in to_inf_all f (getVars f) |> (Array.map inf_to_string)
+
+let print_f_inf f = show_inf_of_f f |> Array.iter print_endline

@@ -61,6 +61,9 @@ let bdd_of_formula (f: formula) =
 	let _ = (build tNodes tEntries vars f 0) in
 	tNodes, tEntries
 
+let expr2bdd = bdd_of_formula
+
+(* testing/debug function *)
 let bdd_and_show f =
 	let tNodes, tEntries = bdd_of_formula f in
 	Hashtbl.iter (fun key v -> begin
