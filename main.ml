@@ -1,6 +1,6 @@
 open Bdd
-open Formula
 open Formula.Atom
+open Formula
 
 let x = Atom(Var "x")
 let x1 = Atom(Var "x1")
@@ -23,9 +23,10 @@ let f2 = BinOp(
 	And,
 	BinOp(x2, BiImplies, Atom(Var "y2")))
 
-let bempty = Leaf false
 let not_x = UniOp(Not, x)
 let xAndy = BinOp(x, And, Atom(Var "y"))
 
 let f3 = BinOp(BinOp(x1, BiImplies, x2), And, x3)
+
 ;;
+let f2_order = [|Var "x1"; Var "y1"; Var "x2"; Var "y2"|]

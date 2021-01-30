@@ -93,10 +93,9 @@ let rec inf_desc (f:formula) (var:atom) : inf =
 		match f with
 		| Atom t -> if String.equal (atom_to_string t) v
 			then to_inf f var else {low=f; high=f}
-		| UniOp (Not, t) -> begin
-			(* voltea las variables para aplicar el not *)
-			let t_inf = inf_desc t var in {low=t_inf.high; high=t_inf.low}
-		end
+		(* voltea las variables para aplicar el not *)
+		| UniOp (Not, t) -> let t_inf = inf_desc t var
+			in {low=t_inf.high; high=t_inf.low}
 		| BinOp (p, op, q) -> {
 			low=BinOp(
 				(substitute p (B false) var),

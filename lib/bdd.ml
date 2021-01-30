@@ -1,21 +1,7 @@
 open Formula
 
-type bdd =
-	| Leaf of bool
-	| Node of atom * bdd * bdd (* := Var, Low, High *)
-
-let left (b : bdd) : bdd =
-	match b with
-	| Node (_label, left, _right) -> left
-	| Leaf l -> Leaf l
-
-let right (b : bdd) : bdd =
-	match b with
-	| Node (_label, _left, right) -> right
-	| Leaf l -> Leaf l
-
 type bEntry = {
-	index : int;
+	index : int; (* index of var in atom array (given by getAllVars) *)
 	low  : int;
 	high : int;
 }
@@ -28,19 +14,17 @@ let bEntry_to_string {index; low; high} =
 	"high=" ^ string_of_int high
 
 let mk (tNodes) (tEntries) (index:int) ~(low:int) ~(high:int):int =
-	if Int.equal low high
-	then low
-	else let entry = {index; low; high} in
-	(* entry |> bEntry_to_string |> print_endline; *)
-	if Hashtbl.mem tEntries entry then
-		Hashtbl.find tEntries entry
-	else begin
-		let newIndex = Hashtbl.length tEntries in
-		Hashtbl.add tEntries entry newIndex;
-		Hashtbl.add tNodes newIndex entry;
-		("inserted " ^ string_of_int newIndex) |> print_endline;
-		newIndex
-	end
+	if Int.equal low high then low
+	else
+		let entry = {index; low; high} in
+		if Hashtbl.mem tEntries entry then
+			Hashtbl.find tEntries entry
+		else begin
+			let newIndex = Hashtbl.length tNodes in
+			Hashtbl.add tNodes newIndex entry;
+			Hashtbl.add tEntries {index; low; high} newIndex;
+			newIndex
+		end
 
 let rec build tNodes tEntries vars (t: formula) (i:int) : int =
 	if i > (Array.length vars)-1 then
@@ -52,28 +36,31 @@ let rec build tNodes tEntries vars (t: formula) (i:int) : int =
 			~low:(build tNodes tEntries vars f_inf.low (i+1))
 			~high:(build tNodes tEntries vars f_inf.high (i+1))
 
-let bdd_of_formula (f: formula) =
-	let vars = getVars f in
+let bddTables_of_formula (f: formula) (vars:atom array) =
 	let tNodes = Hashtbl.create ((Array.length vars)+2)
 	and tEntries = Hashtbl.create (Array.length vars) in
 	Hashtbl.add tNodes 0 n0; Hashtbl.add tNodes 1 n1;
-	Hashtbl.add tEntries n0 0; Hashtbl.add tEntries n1 1;
+	(* Hashtbl.add tEntries n0 0; Hashtbl.add tEntries n1 1; *)
 	let _ = (build tNodes tEntries vars f 0) in
 	tNodes, tEntries
 
-let expr2bdd = bdd_of_formula
+let formula_to_bdd f vars =
+	let nodes, _ = bddTables_of_formula f vars in nodes
 
-(* testing/debug function *)
-let bdd_and_show f =
-	let tNodes, tEntries = bdd_of_formula f in
-	Hashtbl.iter (fun key v -> begin
-		print_int key;
+let printout_bddTable table vars =
+	for i=(Hashtbl.length table)-1 downto 2 do
+		print_int i;
 		print_string " : ";
-		v |> bEntry_to_string |> print_endline
-	end) tNodes;
-	Hashtbl.iter (fun key v -> begin
-		key |> bEntry_to_string |> print_string;
-		print_string " : ";
-		print_int v;
-		print_newline();
-	end) tEntries;
+		Hashtbl.find table i |> (fun {index; low; high} -> begin
+			atom_to_string vars.(index) ^ " " ^
+			"l=" ^ string_of_int low ^ " " ^
+			"h=" ^ string_of_int high
+		end) |> print_endline;
+	done;
+	print_endline "1 : ⊤";
+	print_endline "0 : ⊥"
+
+let show_f_as_bdd f vars = printout_bddTable (formula_to_bdd f vars) vars
+
+let expr2bdd f = show_f_as_bdd f (getVars f)
+
