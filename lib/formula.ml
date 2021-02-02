@@ -54,31 +54,35 @@ let rec to_string (f:formula):string =
 	| UniOp (Not, f) -> "¬" ^ to_string f
 	| BinOp (f1, op, f2) -> "("^(to_string f1) ^ (string_from_op op) ^ (to_string f2)^")"
 
+let rec sub_bool (f:formula) (value:bool) (x:atom):formula =
+	match f with
+	| Atom a -> begin
+		match a with
+		| B b -> Atom (B b)
+		| Var name ->
+			if String.equal name (atom_to_string x)
+			then Atom (B value)
+			else Atom (Var name)
+	end
+	| UniOp (Not, f) -> UniOp(Not, sub_bool f (value) x)
+	| BinOp (f1, op, f2) ->
+		BinOp((sub_bool f1 value x), op, (sub_bool f2 value x))
+
 (* do a f[value/variable] substitution *)
 let rec substitute (f:formula) (value:atom) (x:atom):formula =
 	match value with
-	| B value -> (
-		match f with
-		| Atom a -> (
-			match a with
-			| B b -> Atom (B b)
-			| Var name -> (
-				if String.equal name (atom_to_string x)
-				then Atom (B value)
-				else Atom (Var name)))
-		| UniOp (Not, f) -> (substitute f (B (not value)) x)
-		| BinOp (f1, op, f2) ->
-			BinOp((substitute f1 (B value) x), op, (substitute f2 (B value) x)))
+	| B value -> sub_bool f value x
 	| Var value -> (
 		match f with
-		| Atom a -> (
+		| Atom a -> begin
 			match a with
 			| B b -> Atom (B b)
 			| Var name -> (
 				if String.equal name (atom_to_string x)
 				then Atom (Var value)
-				else Atom (Var name)))
-		| UniOp (Not, f) -> (substitute f (Var value) x)
+				else Atom (Var name))
+		end
+		| UniOp (Not, f) -> UniOp(Not, (substitute f (Var value) x))
 		| BinOp (f1, op, f2) ->
 			BinOp((substitute f1 (Var value) x), op, (substitute f2 (Var value) x)))
 
