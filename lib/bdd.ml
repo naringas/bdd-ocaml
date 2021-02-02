@@ -60,7 +60,11 @@ let printout_bddTable table vars =
 	print_endline "1 : ⊤";
 	print_endline "0 : ⊥"
 
-let show_f_as_bdd f vars = printout_bddTable (formula_to_bdd f vars) vars
+let show_f_as_bdd f vars =
+	print_string "expr: "; to_string f |> print_endline;
+	print_string "order: "; Array.map (fun a -> atom_to_string a^", ") vars |> Array.iter print_string;
+	print_newline();
+	printout_bddTable (formula_to_bdd f vars) vars
 
 let expr2bdd f = show_f_as_bdd f (getVars f)
 

@@ -52,7 +52,7 @@ let rec to_string (f:formula):string =
 	in match f with
 	| Atom f -> atom_to_string f
 	| UniOp (Not, f) -> "¬" ^ to_string f
-	| BinOp (f1, op, f2) -> (to_string f1) ^ (string_from_op op) ^ (to_string f2)
+	| BinOp (f1, op, f2) -> "("^(to_string f1) ^ (string_from_op op) ^ (to_string f2)^")"
 
 (* do a f[value/variable] substitution *)
 let rec substitute (f:formula) (value:atom) (x:atom):formula =
@@ -91,10 +91,12 @@ let rec inf_desc (f:formula) (var:atom) : inf =
 	| B _ -> assert false
 	| Var v -> begin
 		match f with
-		| Atom t -> if String.equal (atom_to_string t) v
+		| Atom t ->
+			if String.equal (atom_to_string t) v
 			then to_inf f var else {low=f; high=f}
 		(* voltea las variables para aplicar el not *)
-		| UniOp (Not, t) -> let t_inf = inf_desc t var
+		| UniOp (Not, t) ->
+			let t_inf = inf_desc t var
 			in {low=t_inf.high; high=t_inf.low}
 		| BinOp (p, op, q) -> {
 			low=BinOp(
