@@ -1,7 +1,17 @@
+type atom =
+	| Var of string
+	| B of bool
+type uniOp = Not
+type binOp = And | Or | Implies | BiImplies (* | Xor | Nor | Nand *)
+type formula =
+	| Atom of atom
+	| UniOp of uniOp * formula
+	| BinOp of formula * binOp * formula
+
+(* If-then-else normal form without its term *)
+type inf = {low: formula; high: formula}
+
 module Atom = struct
-	type atom =
-		| Var of string
-		| B of bool
 	type t = atom
 	let compare a b =
 		match a, b with
@@ -15,25 +25,10 @@ module Atom = struct
 		| B a -> if a then "⊤" else "⊥"
 end
 module ASet = Set.Make(Atom)
-
 (* shortcuts *)
-type atom = Atom.t
 let atom_to_string = Atom.to_string
 
-type uniOp = Not
-type binOp = And | Or | Implies | BiImplies (* | Xor | Nor | Nand *)
-type formula =
-	| Atom of atom
-	| UniOp of uniOp * formula
-	| BinOp of formula * binOp * formula
-
-(* If-then-else normal form *)
-type inf = {
-	low: formula;
-	high: formula
-}
-
-let getVars (f:formula):Atom.t array =
+let getVars (f:formula):atom array =
 	let rec getAllVars = function
 		| Atom f -> f :: []
 		| UniOp (_op, f) -> getAllVars f
@@ -90,7 +85,7 @@ let to_inf (f:formula) (var:atom):inf = {
 	low=(substitute f (B false) var);
 	high=(substitute f (B true) var)}
 
-let rec inf_desc (f:formula) (var:atom) : inf =
+let rec inf_desc (f:formula) (var:atom):inf =
 	match var with
 	| B _ -> assert false
 	| Var v -> begin
