@@ -35,3 +35,20 @@ let f3 = BinOp(BinOp(x1, BiImplies, x2), Or, x3)
 
 let f2_order = [|Var "x1"; Var "y1"; Var "x2"; Var "y2"|]
 ;;
+let b3 = expr2bdd f3
+(* let t3, ten3 = restrict1 tree false (Var "x2") *)
+
+(*
+let show_graphoid b =
+	let vars, (nodes, _) = b in
+	let root = (Hashtbl.length nodes) - 1 in
+	let rec into ?(ts="") k =
+		if k < 2 then string_of_int k else
+		let {index; high; low} = Hashtbl.find nodes k in
+			"["^string_of_int k^" "^atom_to_string vars.(index)^
+			"\n"^ts^" lo:("^(into ~ts:(ts^"\t") low)^")"^
+			"\n"^ts^" hi:("^(into ~ts:(ts^"\t") high)^")"^
+			"\n"^ts^atom_to_string vars.(index)^"]"
+	in
+	into root
+ *)

@@ -85,29 +85,6 @@ let to_inf (f:formula) (var:atom):inf = {
 	low=(substitute f (B false) var);
 	high=(substitute f (B true) var)}
 
-let rec inf_desc (f:formula) (var:atom):inf =
-	match var with
-	| B _ -> assert false
-	| Var v -> begin
-		match f with
-		| Atom t ->
-			if String.equal (atom_to_string t) v
-			then to_inf f var else {low=f; high=f}
-		(* voltea las variables para aplicar el not *)
-		| UniOp (Not, t) ->
-			let t_inf = inf_desc t var
-			in {low=t_inf.high; high=t_inf.low}
-		| BinOp (p, op, q) -> {
-			low=BinOp(
-				(substitute p (B false) var),
-				op,
-				(substitute q (B false) var));
-			high=BinOp(
-				(substitute p (B true) var),
-				op,
-				(substitute q (B true) var))}
-	end
-
 (* evaluates a formula in which all atoms are boolean (NO VARIABLES) *)
 let rec eval_formula form : bool =
 	match form with
