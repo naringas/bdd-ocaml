@@ -47,8 +47,6 @@ let bddTables_of_formula (f:formula) (vars:atom array):bddTables =
 	let _ = (build f 0) in
 	tNodes, tEntries
 
-let nodes_table bddTables:((int, bEntry) Hashtbl.t) = let nodes, _ = bddTables in nodes
-
 let show_table table =
 	for k=(Hashtbl.length table)-1 downto 2 do
 		print_int k;
@@ -79,7 +77,9 @@ let show_bdd bdd =
 	print_newline();
 	show_bdd_table table vars
 
-(* funcion publica publica *)
+(**
+ * CREAR BDD expr2bdd
+**)
 let expr2bdd ?(vars:atom array option) (f:formula):bdd =
 	let vars =
 		match vars with
@@ -92,6 +92,25 @@ let show_as_bdd ?(vars:atom array option) (f:formula) =
 	print_string "expr: "; to_string f |> print_endline;
 	let b = (expr2bdd ?vars f) in b |> show_bdd; b
 
+let show_graphoid (b:bdd) : unit =
+	let vars, (nodes, _) = b in
+	let root = (Hashtbl.length nodes) - 1 in
+	let rec into ?(ts="") k =
+		if k < 2 then (print_int k;) else
+		let {index; high; low} = Hashtbl.find nodes k in
+		begin
+			print_newline(); print_string ts;
+			print_string ("["^string_of_int k^" "^atom_to_string vars.(index));
+			print_newline(); print_string ts;
+			(print_string " lo:("); into ~ts:(ts^"\t") low; (print_string ") ");
+			print_newline(); print_string ts;
+			(print_string " hi:("); into ~ts:(ts^"\t") high; (print_string ") ");
+			print_newline(); print_string ts;
+			print_string (atom_to_string vars.(index)^"]");
+		end
+	in into root
+
+
 (**
  * RESTRICTION
 **)
@@ -99,7 +118,7 @@ let varIndex (vars:atom array) (var:atom):int =
 	let ret = ref (-1) in
 	vars |> Array.iteri (fun index v ->
 		if Atom.equal var v then ret := index);
-		if !ret = (-1) then raise Not_found else !ret
+	if !ret = (-1) then raise Not_found else !ret
 
 let restrict1 (value:bool) (var:atom) (tree:bdd) : bdd =
 	let vars, (nodes, entries) = tree in
@@ -122,30 +141,10 @@ let restrict1 (value:bool) (var:atom) (tree:bdd) : bdd =
 	let _ = into ((Hashtbl.length nodes)-1) in ();
 	vars, (newNodes,newEntries)
 
-let show_graphoid (b:bdd) : unit =
-	let vars, (nodes, _) = b in
-	let root = (Hashtbl.length nodes) - 1 in
-	let rec into ?(ts="") k =
-		if k < 2 then (print_int k;) else
-		let {index; high; low} = Hashtbl.find nodes k in
-		begin
-			print_newline(); print_string ts;
-			print_string ("["^string_of_int k^" "^atom_to_string vars.(index));
-			print_newline(); print_string ts;
-			(print_string " lo:("); into ~ts:(ts^"\t") low; (print_string ") ");
-			print_newline(); print_string ts;
-			(print_string " hi:("); into ~ts:(ts^"\t") high; (print_string ") ");
-			print_newline(); print_string ts;
-			print_string (atom_to_string vars.(index)^"]");
-		end
-	in into root
 
-(*
-let bdd2tabla ((vars, table):bdd) =
-	let rows = Int.shift_left 1 (Array.length vars) in
-	Array.make_matrix rows 2
-	table
- *)
+(**
+ * APPLY
+**)
 let mergeVars vars1 vars2 : atom array =
 	Array.to_list vars1 @ Array.to_list vars2 |> ASet.of_list |> ASet.to_seq |> Array.of_seq
 
@@ -199,3 +198,21 @@ let apply (op:binOp) (b1:bdd) (b2:bdd) =
 	in
 	let _ = app ((Hashtbl.length nodes1)-1) ((Hashtbl.length nodes2)-1) in ();
 	newVars, (newNodes, newEntries)
+
+
+let neg_bdd b =
+	let vars, (nodes, entries) = b in
+	let newNodes = Hashtbl.copy nodes
+	and newEntries = Hashtbl.copy entries in
+	for k=(Hashtbl.length nodes)-1 downto 2 do
+		let entry = Hashtbl.find newNodes k in
+		let newEntry = {
+			index=entry.index;
+			low=(if entry.low=0 then 1 else 0);
+			high=(if entry.high=0 then 1 else 0)}
+		in
+		Hashtbl.replace newNodes k newEntry;
+		Hashtbl.remove newEntries entry;
+		Hashtbl.add newEntries newEntry k
+	done;
+	vars, (newNodes, newEntries)

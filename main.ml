@@ -9,6 +9,9 @@ let y = Atom(Var "y")
 let y1 = Atom(Var "y1")
 let y2 = Atom(Var "y2")
 let y3 = Atom(Var "y3")
+let p = Atom(Var "p")
+let q = Atom(Var "q")
+let r = Atom(Var "r")
 
 let not_x = UniOp(Not, x)
 let xAndy = BinOp(x, And, y)
@@ -41,19 +44,5 @@ let fx = BinOp(x, Xor, y)
 let b3 = expr2bdd f3
 (* let t3, ten3 = restrict1 tree false (Var "x2") *)
 
-(*
-let show_graphoid b =
-	let vars, (nodes, _) = b in
-	let root = (Hashtbl.length nodes) - 1 in
-	let rec into ?(ts="") k =
-		if k < 2 then string_of_int k else
-		let {index; high; low} = Hashtbl.find nodes k in
-			"["^string_of_int k^" "^atom_to_string vars.(index)^
-			"\n"^ts^" lo:("^(into ~ts:(ts^"\t") low)^")"^
-			"\n"^ts^" hi:("^(into ~ts:(ts^"\t") high)^")"^
-			"\n"^ts^atom_to_string vars.(index)^"]"
-	in
-	into root
- *)
 let xx = (expr2bdd x)
 let yy = (expr2bdd y);;
