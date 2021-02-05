@@ -2,7 +2,7 @@ type atom =
 	| Var of string
 	| B of bool
 type uniOp = Not
-type binOp = And | Or | Implies | BiImplies (* | Xor | Nor | Nand *)
+type binOp = And | Or | Implies | BiImplies | Xor (* | Nor | Nand *)
 type formula =
 	| Atom of atom
 	| UniOp of uniOp * formula
@@ -43,6 +43,7 @@ let rec to_string (f:formula):string =
 		| Or  -> " ∨ "
 		| Implies -> " ⇒ "
 		| BiImplies -> " ⇔ "
+		| Xor -> " ⊕ "
 	end
 	in match f with
 	| Atom f -> atom_to_string f
@@ -104,6 +105,12 @@ let rec eval_formula form : bool =
 			and evQ = eval_formula q in
 			(evP && evQ) || (not evP && not evQ)
 		end
+		| Xor -> begin
+			let evP = eval_formula p
+			and evQ = eval_formula q in
+			(evP || evQ) && (not(evP && evQ))
+		end
+
 	end
 
 (* funciones de prueba/debug *)
