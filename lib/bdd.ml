@@ -18,7 +18,8 @@ let bEntry_to_string {index; low; high} =
 
 (* funciones "internas" mk, build, bddTables_of_formula *)
 let mk (tNodes, tEntries:bddTables) (index:int) ~(low:int) ~(high:int):int =
-	if index > 0 && Int.equal low high then low
+	if Int.equal low high (* !!! esto evita bdd de un solo nodo pero rompe la reduccion en apply && index > 0 *)
+	then low
 	else
 		let entry = {index; low; high} in
 		if Hashtbl.mem tEntries entry then
