@@ -65,7 +65,6 @@ let show_bdd_table table vars =
 		print_int k;
 		print_string " : ";
 		Hashtbl.find table k |> (fun {index; low; high} -> begin
-			if low < 0 then "" else
 			(atom_to_string vars.(index) ^ " " ^
 			"lo=" ^ string_of_int low ^ " " ^
 			"hi=" ^ string_of_int high)
@@ -91,22 +90,21 @@ let expr2bdd ?(vars:atom array option) (f:formula):bdd =
 
 let show_as_bdd ?(vars:atom array option) (f:formula) =
 	print_string "expr: "; to_string f |> print_endline;
-	(expr2bdd ?vars f) |> show_bdd
+	let b = (expr2bdd ?vars f) in b |> show_bdd; b
 
 (**
  * RESTRICTION
 **)
 let varIndex (vars:atom array) (var:atom):int =
-	let ret = ref (-1) in vars
-	|> Array.iteri (fun index v ->
-		if Atom.equals var v then ret := index);
-	if !ret = (-1) then raise Not_found else !ret
+	let ret = ref (-1) in
+	vars |> Array.iteri (fun index v ->
+		if Atom.equal var v then ret := index);
+		if !ret = (-1) then raise Not_found else !ret
 
-let restrict1 (tree:bdd) (value:bool) (var:atom) : bdd =
+let restrict1 (value:bool) (var:atom) (tree:bdd) : bdd =
 	let vars, (nodes, entries) = tree in
 	let newNodes = Hashtbl.copy nodes
 	and newEntries = Hashtbl.copy entries in
-	(* let newVars = Array.make ((Array.length vars)-1) (Var "") in *)
 	let varIndex = varIndex vars var in
 	let memoi = Hashtbl.create (Array.length vars) in
 	let rec into k : int =
@@ -132,7 +130,7 @@ let show_graphoid (b:bdd) : unit =
 		let {index; high; low} = Hashtbl.find nodes k in
 		begin
 			print_newline(); print_string ts;
-			print_string ("["^string_of_int k^":"^atom_to_string vars.(index));
+			print_string ("["^string_of_int k^" "^atom_to_string vars.(index));
 			print_newline(); print_string ts;
 			(print_string " lo:("); into ~ts:(ts^"\t") low; (print_string ") ");
 			print_newline(); print_string ts;
@@ -142,10 +140,62 @@ let show_graphoid (b:bdd) : unit =
 		end
 	in into root
 
-
 (*
 let bdd2tabla ((vars, table):bdd) =
 	let rows = Int.shift_left 1 (Array.length vars) in
 	Array.make_matrix rows 2
 	table
  *)
+let mergeVars vars1 vars2 : atom array =
+	Array.to_list vars1 @ Array.to_list vars2 |> ASet.of_list |> ASet.to_seq |> Array.of_seq
+
+let atom_of_int i = if i = 0 then B false else B true
+
+let apply (op:binOp) (b1:bdd) (b2:bdd) =
+	let vars1, (nodes1, _entries1) = b1
+	and vars2, (nodes2, _entries2) = b2 in
+	let newVars = (mergeVars vars1 vars2) in
+	let newNodes = Hashtbl.create ((Array.length newVars)+2)
+ 	and newEntries = Hashtbl.create (Array.length newVars) in
+	Hashtbl.add newNodes 0 n0; Hashtbl.add newNodes 1 n1;
+
+	let memoi = Hashtbl.create ((Array.length newVars)*2) in
+	let rec app t1 t2 =
+		if Hashtbl.mem memoi (t1,t2) then Hashtbl.find memoi (t1,t2)
+		else let result =
+			if t1 < 2 && t2 < 2 then
+				eval_formula (BinOp(Atom (atom_of_int t1), op, Atom (atom_of_int t2))) |> Bool.to_int
+			else
+				let e1 = Hashtbl.find nodes1 t1
+				and e2 = Hashtbl.find nodes2 t2 in
+				(* print_int t1; bEntry_to_string e1 |> print_endline;
+				print_int t2; bEntry_to_string e2 |> print_endline; *)
+				let v1 = if t1 > 1 then vars1.(e1.index) else atom_of_int t1
+				and v2 = if t2 > 1 then vars2.(e2.index) else atom_of_int t2
+				 in
+				if Atom.equal v1 v2 then (
+					(assert (Int.equal (varIndex newVars v1) (varIndex newVars v2)));
+					mk (newNodes, newEntries) (varIndex newVars v1)
+						~low:(app e1.low e2.low)
+						~high:(app e1.high e2.high))
+				else if e1.index = e1.low && e1.index = e1.high then
+					mk (newNodes, newEntries) (varIndex newVars v2)
+						~low:(app t1 e2.low)
+						~high:(app t1 e2.high)
+				else if e2.index = e2.low && e2.index = e2.high then
+					mk (newNodes, newEntries) (varIndex newVars v1)
+						~low:(app e1.low t2)
+						~high:(app e1.high t2)
+				else if (varIndex newVars v1) < (varIndex newVars v2) then
+					mk (newNodes, newEntries) (varIndex newVars v1)
+						~low:(app e1.low t2)
+						~high:(app e1.high t2)
+				else (* if (varIndex newVars v1) > (varIndex newVars v2) *)
+					mk (newNodes, newEntries) (varIndex newVars v1)
+						~low:(app t1 e2.low)
+						~high:(app t1 e2.high)
+		in Hashtbl.add memoi (t1,t2) result;
+		result
+	in
+	let _ = app ((Hashtbl.length nodes1)-1) ((Hashtbl.length nodes2)-1) in ();
+	newVars, (newNodes, newEntries)

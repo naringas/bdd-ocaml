@@ -19,6 +19,7 @@ let f = BinOp(
 		And,
 		BinOp(UniOp(Not, x1), Or, UniOp(Not, x2)))
 
+(* ((x1 ∨ ¬x1) ∧ (x2 ∨ ¬x2)) *)
 let f_alt = BinOp(
 	BinOp(x1, Or, UniOp(Not, x1)),
 	And,
@@ -34,6 +35,8 @@ let f2 = BinOp(
 let f3 = BinOp(BinOp(x1, BiImplies, x2), Or, x3)
 
 let f2_order = [|Var "x1"; Var "y1"; Var "x2"; Var "y2"|]
+
+let fx = BinOp(x, Xor, y)
 ;;
 let b3 = expr2bdd f3
 (* let t3, ten3 = restrict1 tree false (Var "x2") *)
@@ -52,3 +55,5 @@ let show_graphoid b =
 	in
 	into root
  *)
+let xx = (expr2bdd x)
+let yy = (expr2bdd y);;

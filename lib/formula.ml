@@ -19,7 +19,7 @@ module Atom = struct
 		| (Var _a, B _b) -> 1
 		| (B _a, Var _b) -> -1
 		| (B a, B b) -> Bool.compare a b
-	let equals a b = Int.equal 0 (compare a b)
+	let equal a b = Int.equal 0 (compare a b)
 	let to_string = function
 		| Var a -> a
 		| B a -> if a then "⊤" else "⊥"
