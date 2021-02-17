@@ -1,0 +1,5 @@
+#use "topfind";;
+(*#require "findlib";;*)
+#require "core.top";;
+
+#use "main.ml";;
